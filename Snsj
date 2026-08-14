@@ -1,0 +1,94 @@
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/GreenDeno/Venyx-UI-Library/main/source.lua"))()
+local venyx = library.new("phakin hub")
+
+-- ==================== THEME ====================
+local themes = {
+	Background = Color3.fromRGB(24, 24, 24),
+	Glow = Color3.fromRGB(0, 0, 0),
+	Accent = Color3.fromRGB(0, 170, 255),
+	LightContrast = Color3.fromRGB(20, 20, 20),
+	DarkContrast = Color3.fromRGB(14, 14, 14),
+	TextColor = Color3.fromRGB(255, 255, 255)
+}
+
+for theme, color in pairs(themes) do
+	venyx:setTheme(theme, color)
+end
+
+-- ==================== MAIN PAGE ====================
+local mainPage = venyx:addPage("Main", 5012544693)
+local mainSection = mainPage:addSection("Main Features")
+
+mainSection:addToggle("Enable Feature", false, function(value)
+	print("Feature:", value)
+	-- ใส่โค้ดของคุณตรงนี้
+end)
+
+mainSection:addButton("Test Button", function()
+	venyx:Notify("phakin hub", "ปุ่มทำงานแล้ว!", function() end)
+	print("Button clicked")
+end)
+
+mainSection:addSlider("WalkSpeed", 16, 16, 200, function(value)
+	local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = value
+	end
+end)
+
+mainSection:addDropdown("Mode", {"Normal", "Rage", "Legit"}, function(selected)
+	print("Selected Mode:", selected)
+end)
+
+-- ==================== PLAYER PAGE ====================
+local playerPage = venyx:addPage("Player", 5012544693)
+local playerSection = playerPage:addSection("Player Settings")
+
+playerSection:addToggle("Infinite Jump", false, function(value)
+	-- ใส่โค้ด Infinite Jump ตรงนี้
+	print("Infinite Jump:", value)
+end)
+
+playerSection:addSlider("JumpPower", 50, 50, 200, function(value)
+	local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.JumpPower = value
+	end
+end)
+
+playerSection:addTextbox("Custom Speed", "16", function(text, focusLost)
+	if focusLost then
+		local speed = tonumber(text)
+		if speed then
+			local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+			if humanoid then
+				humanoid.WalkSpeed = speed
+			end
+		end
+	end
+end)
+
+-- ==================== KEYBINDS PAGE ====================
+local keyPage = venyx:addPage("Keybinds", 5012544693)
+local keySection = keyPage:addSection("Keybinds")
+
+keySection:addKeybind("Toggle UI", Enum.KeyCode.RightControl, function()
+	venyx:toggle()
+end, function(newKey)
+	print("Keybind เปลี่ยนเป็น:", newKey)
+end)
+
+-- ==================== THEME PAGE ====================
+local themePage = venyx:addPage("Theme", 5012544693)
+local themeSection = themePage:addSection("Theme Colors")
+
+for themeName, color in pairs(themes) do
+	themeSection:addColorPicker(themeName, color, function(newColor)
+		venyx:setTheme(themeName, newColor)
+	end)
+end
+
+-- ==================== LOAD ====================
+venyx:SelectPage(venyx.pages[1], true)
+
+print("phakin hub loaded successfully!")

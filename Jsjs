@@ -1,0 +1,259 @@
+-- ==================== PHAKIN HUB + FLY ====================
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Stratxgy/VenyxUI/main/Venyx.lua"))()
+local venyx = library.new("phakin hub")
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Settings
+local Settings = {
+	Speed = 16,
+	JumpPower = 50,
+	FlySpeed = 50,
+	PushPower = 150,
+	Fly = false,
+	ESP = false
+}
+
+local FlyBV, FlyBG, FlyConn
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "PhakinESP"
+ESPFolder.Parent = game.CoreGui
+
+-- ==================== ฟังก์ชัน ====================
+
+-- ผลักผู้เล่น
+local function PushPlayers()
+	local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not myHRP then return end
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr \~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local target = plr.Character.HumanoidRootPart
+			local dir = (target.Position - myHRP.Position).Unit
+			target.AssemblyLinearVelocity = dir * Settings.PushPower + Vector3.new(0, 40, 0)
+		end
+	end
+end
+
+-- บิน
+local function StopFly()
+	Settings.Fly = false
+	if FlyConn then FlyConn:Disconnect() FlyConn = nil end
+	if FlyBV then FlyBV:Destroy() FlyBV = nil end
+	if FlyBG then FlyBG:Destroy() FlyBG = nil end
+
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+	if hum then hum.PlatformStand = false end
+end
+
+local function StartFly()
+	local char = LocalPlayer.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChild("Humanoid")
+	if not hrp or not hum then return end
+
+	StopFly()
+	Settings.Fly = true
+	hum.PlatformStand = true
+
+	FlyBV = Instance.new("BodyVelocity")
+	FlyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	FlyBV.Velocity = Vector3.zero
+	FlyBV.Parent = hrp
+
+	FlyBG = Instance.new("BodyGyro")
+	FlyBG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	FlyBG.P = 10000
+	FlyBG.Parent = hrp
+
+	FlyConn = RunService.RenderStepped:Connect(function()
+		if not Settings.Fly or not hrp or not hrp.Parent then
+			StopFly()
+			return
+		end
+
+		FlyBG.CFrame = Camera.CFrame
+
+		local move = Vector3.zero
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += Camera.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= Camera.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= Camera.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += Camera.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
+
+		FlyBV.Velocity = move.Magnitude > 0 and move.Unit * Settings.FlySpeed or Vector3.zero
+	end)
+end
+
+local function ToggleFly(state)
+	if state then
+		StartFly()
+	else
+		StopFly()
+	end
+end
+
+-- ESP
+local function ClearESP()
+	ESPFolder:ClearAllChildren()
+end
+
+local function CreateESP(plr)
+	if plr == LocalPlayer then return end
+	local char = plr.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local old = ESPFolder:FindFirstChild(plr.Name)
+	if old then old:Destroy() end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = plr.Name
+	bb.Adornee = hrp
+	bb.Size = UDim2.new(0, 120, 0, 40)
+	bb.StudsOffset = Vector3.new(0, 3.5, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = ESPFolder
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = plr.Name
+	nameLabel.TextColor3 = Color3.fromRGB(0, 170, 255)
+	nameLabel.TextStrokeTransparency = 0
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 14
+	nameLabel.Parent = bb
+
+	local distLabel = Instance.new("TextLabel")
+	distLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	distLabel.Position = UDim2.new(0, 0, 0.5, 0)
+	distLabel.BackgroundTransparency = 1
+	distLabel.TextColor3 = Color3.new(1, 1, 1)
+	distLabel.TextStrokeTransparency = 0
+	distLabel.Font = Enum.Font.Gotham
+	distLabel.TextSize = 12
+	distLabel.Parent = bb
+
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if not Settings.ESP or not hrp or not hrp.Parent then
+			bb:Destroy()
+			if conn then conn:Disconnect() end
+			return
+		end
+		local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if myHRP then
+			distLabel.Text = math.floor((myHRP.Position - hrp.Position).Magnitude) .. " studs"
+		end
+	end)
+end
+
+local function ToggleESP(state)
+	Settings.ESP = state
+	ClearESP()
+	if state then
+		for _, plr in pairs(Players:GetPlayers()) do
+			CreateESP(plr)
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function()
+		task.wait(1)
+		if Settings.ESP then CreateESP(plr) end
+	end)
+end)
+
+for _, plr in pairs(Players:GetPlayers()) do
+	plr.CharacterAdded:Connect(function()
+		task.wait(1)
+		if Settings.ESP then CreateESP(plr) end
+	end)
+end
+
+-- ความเร็ว + โดดสูง
+local function ApplyMovement()
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+	if hum then
+		hum.WalkSpeed = Settings.Speed
+		hum.JumpPower = Settings.JumpPower
+	end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(0.6)
+	ApplyMovement()
+	if Settings.Fly then
+		StartFly()
+	end
+end)
+
+-- ==================== UI ====================
+local mainPage = venyx:addPage("Main")
+local mainSec = mainPage:addSection("Features")
+
+-- บิน
+mainSec:addToggle("บิน (Fly)", false, function(value)
+	ToggleFly(value)
+end)
+
+mainSec:addSlider("ความเร็วบิน", 50, 20, 200, function(value)
+	Settings.FlySpeed = value
+end)
+
+-- ESP
+mainSec:addToggle("ESP", false, function(value)
+	ToggleESP(value)
+end)
+
+-- ผลัก
+mainSec:addButton("ผลักผู้เล่นทั้งหมด", function()
+	PushPlayers()
+	venyx:Notify("phakin hub", "ผลักผู้เล่นแล้ว!")
+end)
+
+mainSec:addSlider("พลังผลัก", 150, 50, 500, function(value)
+	Settings.PushPower = value
+end)
+
+-- ความเร็ว + โดด
+mainSec:addSlider("ความเร็วเดิน", 16, 16, 200, function(value)
+	Settings.Speed = value
+	ApplyMovement()
+end)
+
+mainSec:addSlider("ความสูงการโดด", 50, 50, 300, function(value)
+	Settings.JumpPower = value
+	ApplyMovement()
+end)
+
+-- หน้า Keybind + เปิดปิด UI
+local keyPage = venyx:addPage("Settings")
+local keySec = keyPage:addSection("UI Controls")
+
+keySec:addKeybind("เปิด/ปิด UI", Enum.KeyCode.RightControl, function()
+	venyx:toggle()
+end)
+
+keySec:addButton("ปิด UI ชั่วคราว", function()
+	venyx:toggle()
+end)
+
+keySec:addButton("ผลักผู้เล่น (ปุ่ม)", function()
+	PushPlayers()
+end)
+
+-- โหลดหน้าแรก
+venyx:SelectPage(venyx.pages[1], true)
+
+print("✅ phakin hub + Fly โหลดเสร็จแล้ว!")
+print("กด RightControl เพื่อเปิด/ปิด UI")
